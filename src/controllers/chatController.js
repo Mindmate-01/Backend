@@ -3,32 +3,58 @@ const Message = require('../models/Message');
 
 // ML Chatbot API URL
 const ML_CHATBOT_URL = 'https://rayppp.onrender.com/';
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
 
-// Helper function to call ML chatbot
+// Helper function to delay
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper function to call ML chatbot with retry
 async function getAIResponse(userMessage, sessionHistory = []) {
-    try {
-        const response = await fetch(ML_CHATBOT_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                message: userMessage,
-                history: sessionHistory,
-            }),
-        });
+    let lastError;
 
-        if (!response.ok) {
-            throw new Error('ML service unavailable');
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            console.log(`ML Chatbot attempt ${attempt}/${MAX_RETRIES}...`);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+            const response = await fetch(ML_CHATBOT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: userMessage,
+                    history: sessionHistory,
+                }),
+                signal: controller.signal,
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`ML service returned ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('ML Chatbot response received successfully');
+            return data.response || data.message || data.reply || "I'm here to listen. Could you tell me more?";
+        } catch (error) {
+            lastError = error;
+            console.error(`ML Chatbot attempt ${attempt} failed:`, error.message);
+
+            if (attempt < MAX_RETRIES) {
+                console.log(`Retrying in ${RETRY_DELAY_MS * attempt}ms...`);
+                await delay(RETRY_DELAY_MS * attempt); // Exponential backoff
+            }
         }
-
-        const data = await response.json();
-        return data.response || data.message || data.reply || "I'm here to listen. Could you tell me more?";
-    } catch (error) {
-        console.error('ML Chatbot error:', error);
-        // Fallback response if ML service fails
-        return "I hear you. Sometimes it helps to just express what we're feeling. I'm here to listen whenever you're ready to share more.";
     }
+
+    console.error('ML Chatbot all retries failed:', lastError);
+    // Fallback response if ML service fails after all retries
+    return "I hear you. Sometimes it helps to just express what we're feeling. I'm here to listen whenever you're ready to share more.";
 }
 
 // @desc    Start a new chat session
