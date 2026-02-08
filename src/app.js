@@ -15,10 +15,12 @@ app.use(morgan('dev'));
 const authRoutes = require('./routes/authRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const moodRoutes = require('./routes/moodRoutes');
+const journalRoutes = require('./routes/journalRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/mood', moodRoutes);
+app.use('/api/journal', journalRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'MindMate API is running', status: 'OK' });

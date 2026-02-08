@@ -1,20 +1,53 @@
 const ChatSession = require('../models/ChatSession');
 const Message = require('../models/Message');
 
+// ML Chatbot API URL
+const ML_CHATBOT_URL = 'https://rayppp.onrender.com/';
+
+// Helper function to call ML chatbot
+async function getAIResponse(userMessage, sessionHistory = []) {
+    try {
+        const response = await fetch(ML_CHATBOT_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: userMessage,
+                history: sessionHistory,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error('ML service unavailable');
+        }
+
+        const data = await response.json();
+        return data.response || data.message || data.reply || "I'm here to listen. Could you tell me more?";
+    } catch (error) {
+        console.error('ML Chatbot error:', error);
+        // Fallback response if ML service fails
+        return "I hear you. Sometimes it helps to just express what we're feeling. I'm here to listen whenever you're ready to share more.";
+    }
+}
+
 // @desc    Start a new chat session
 // @route   POST /api/chat/start
 // @access  Private
 exports.startSession = async (req, res) => {
     try {
+        const { title } = req.body;
+
         const session = await ChatSession.create({
-            pseudonymId: req.user.pseudonymId, // Use pseudonym!
+            pseudonymId: req.user.pseudonymId,
+            title: title || 'New Conversation',
         });
 
         // Create an initial system greeting
         await Message.create({
             sessionId: session._id,
             sender: 'system',
-            content: 'Welcome to MindMate. How are you feeling today_ (This is a safe space)',
+            content: 'Welcome to MindMate. How are you feeling today? (This is a safe space)',
         });
 
         res.status(201).json(session);
@@ -113,7 +146,7 @@ exports.sendMessage = async (req, res) => {
 
             return res.status(200).json({
                 userMessage,
-                aiMessage: safetyMessage, // Return as 'aiMessage' for frontend compatibility
+                aiMessage: safetyMessage,
                 isLocked: true
             });
         }
@@ -125,13 +158,26 @@ exports.sendMessage = async (req, res) => {
             content,
         });
 
-        // Update session timestamp
+        // Update session timestamp and title (from first message)
         session.lastMessageAt = Date.now();
+        if (session.title === 'New Conversation') {
+            // Auto-generate title from first user message
+            session.title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
+        }
         await session.save();
 
-        // 2. Mock AI Response (Placeholder)
-        // In future: Call AI service here
-        const aiResponseContent = `(AI Stub) I hear you saying: "${content}". I am listening.`;
+        // 2. Get AI Response from ML Chatbot
+        // Build session history for context
+        const recentMessages = await Message.find({ sessionId })
+            .sort({ createdAt: -1 })
+            .limit(10);
+
+        const history = recentMessages.reverse().map(m => ({
+            role: m.sender === 'user' ? 'user' : 'assistant',
+            content: m.content
+        }));
+
+        const aiResponseContent = await getAIResponse(content, history);
 
         const aiMessage = await Message.create({
             sessionId,
@@ -167,3 +213,55 @@ exports.unlockSession = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+// @desc    Delete a session
+// @route   DELETE /api/chat/session/:id
+// @access  Private
+exports.deleteSession = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const session = await ChatSession.findOne({ _id: id, pseudonymId: req.user.pseudonymId });
+
+        if (!session) {
+            return res.status(404).json({ message: 'Session not found' });
+        }
+
+        // Delete all messages in the session
+        await Message.deleteMany({ sessionId: id });
+
+        // Delete the session
+        await session.deleteOne();
+
+        res.json({ message: 'Session deleted successfully' });
+    } catch (error) {
+        console.error("Error deleting session:", error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Update session title
+// @route   PUT /api/chat/session/:id
+// @access  Private
+exports.updateSession = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title } = req.body;
+
+        const session = await ChatSession.findOne({ _id: id, pseudonymId: req.user.pseudonymId });
+
+        if (!session) {
+            return res.status(404).json({ message: 'Session not found' });
+        }
+
+        if (title) {
+            session.title = title;
+            await session.save();
+        }
+
+        res.json(session);
+    } catch (error) {
+        console.error("Error updating session:", error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+

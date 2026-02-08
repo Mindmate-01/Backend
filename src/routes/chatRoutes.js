@@ -5,7 +5,9 @@ const {
     getSessions,
     getSessionMessages,
     sendMessage,
-    unlockSession
+    unlockSession,
+    deleteSession,
+    updateSession
 } = require('../controllers/chatController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -62,6 +64,24 @@ router.get('/session/:id', getSessionMessages);
 
 /**
  * @swagger
+ * /api/chat/session/{id}:
+ *   put:
+ *     summary: Update session title
+ *     tags: [Chat]
+ */
+router.put('/session/:id', updateSession);
+
+/**
+ * @swagger
+ * /api/chat/session/{id}:
+ *   delete:
+ *     summary: Delete a session and its messages
+ *     tags: [Chat]
+ */
+router.delete('/session/:id', deleteSession);
+
+/**
+ * @swagger
  * /api/chat/session/{id}/message:
  *   post:
  *     summary: Send a message
@@ -85,7 +105,7 @@ router.get('/session/:id', getSessionMessages);
  *                 type: string
  *     responses:
  *       201:
- *         description: Message sent (includes AI stub response)
+ *         description: Message sent with AI response
  */
 router.post('/session/:id/message', sendMessage);
 
@@ -108,3 +128,4 @@ router.post('/session/:id/message', sendMessage);
 router.post('/session/:id/unlock', unlockSession);
 
 module.exports = router;
+

@@ -8,6 +8,11 @@ const chatSessionSchema = new mongoose.Schema({
         // Not referencing User model directly to maintain logical separation
         // In a microservice architecture, this would just be a string ID
     },
+    title: {
+        type: String,
+        default: 'New Conversation',
+        maxlength: 100,
+    },
     status: {
         type: String,
         enum: ['active', 'locked', 'archived', 'completed'],
