@@ -36,7 +36,12 @@ async function getAIResponse(userMessage, sessionHistory = []) {
 // @access  Private
 exports.startSession = async (req, res) => {
     try {
-        const { title } = req.body;
+        const title = req.body?.title || 'New Conversation';
+
+        if (!req.user || !req.user.pseudonymId) {
+            console.error('startSession: User not authenticated properly', req.user);
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
 
         const session = await ChatSession.create({
             pseudonymId: req.user.pseudonymId,
@@ -52,6 +57,7 @@ exports.startSession = async (req, res) => {
 
         res.status(201).json(session);
     } catch (error) {
+        console.error('startSession error:', error);
         res.status(500).json({ message: error.message });
     }
 };
