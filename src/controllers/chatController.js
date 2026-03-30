@@ -15,7 +15,7 @@ async function getAIResponse(userMessage, sessionHistory = []) {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-            console.log(`ML Chatbot attempt ${attempt}/${MAX_RETRIES}...`);
+            console.log(`ML Chatbot attempt ${attempt}/${MAX_RETRIES} to ${ML_CHATBOT_URL}...`);
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
@@ -35,24 +35,35 @@ async function getAIResponse(userMessage, sessionHistory = []) {
             clearTimeout(timeoutId);
 
             if (!response.ok) {
-                throw new Error(`ML service returned ${response.status}`);
+                const errorText = await response.text();
+                console.error(`ML service returned ${response.status}: ${errorText}`);
+                throw new Error(`ML service error ${response.status}`);
             }
 
             const data = await response.json();
-            console.log('ML Chatbot response received successfully');
-            return data.response || data.message || data.reply || "I'm here to listen. Could you tell me more?";
+            console.log('ML Chatbot response data received:', JSON.stringify(data));
+            
+            // Try to find the response in common locations
+            const aiReply = data.response || data.message || data.reply || data.output || data.text;
+            
+            if (!aiReply) {
+                console.warn('ML service response missing expected fields:', data);
+                return "I'm here to listen. Could you tell me more?";
+            }
+
+            return aiReply;
         } catch (error) {
             lastError = error;
             console.error(`ML Chatbot attempt ${attempt} failed:`, error.message);
 
             if (attempt < MAX_RETRIES) {
                 console.log(`Retrying in ${RETRY_DELAY_MS * attempt}ms...`);
-                await delay(RETRY_DELAY_MS * attempt); // Exponential backoff
+                await delay(RETRY_DELAY_MS * attempt);
             }
         }
     }
 
-    console.error('ML Chatbot all retries failed:', lastError);
+    console.error('ML Chatbot all retries failed. Final error:', lastError.message);
     // Fallback response if ML service fails after all retries
     return "I hear you. Sometimes it helps to just express what we're feeling. I'm here to listen whenever you're ready to share more.";
 }
