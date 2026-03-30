@@ -2,8 +2,9 @@ const ChatSession = require('../models/ChatSession');
 const Message = require('../models/Message');
 
 // ML Chatbot API URL
-const ML_CHATBOT_URL = 'https://rayppp-production.up.railway.app/';
+const ML_CHATBOT_URL = 'https://rayppp-production.up.railway.app/chat';
 const MAX_RETRIES = 3;
+// const MIN_RETRIES = 1;
 const RETRY_DELAY_MS = 2000;
 
 // Helper function to delay
