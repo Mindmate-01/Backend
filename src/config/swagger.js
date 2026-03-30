@@ -14,7 +14,7 @@ const options = {
         servers: [
             {
                 url: process.env.NODE_ENV === 'production'
-                    ? (process.env.RENDER_EXTERNAL_URL || 'https://mindmate-backend-8gxe.onrender.com')
+                    ? (process.env.RENDER_EXTERNAL_URL || 'https://backend-production-979f.up.railway.app')
                     : 'http://localhost:5000',
                 description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server',
             },
