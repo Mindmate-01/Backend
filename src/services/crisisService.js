@@ -26,7 +26,7 @@ const detectCrisis = (content) => {
     const normalizedContent = content.toLowerCase();
 
     const matchedKeyword = CRISIS_KEYWORDS.find(keyword =>
-        normalizedContent.includes(keyword)
+        normalizedContent.includes(keyword) 
     );
 
     if (matchedKeyword) {
