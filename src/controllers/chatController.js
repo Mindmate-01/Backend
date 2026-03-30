@@ -2,7 +2,7 @@ const ChatSession = require('../models/ChatSession');
 const Message = require('../models/Message');
 
 // ML Chatbot API URL
-const ML_CHATBOT_URL = 'https://rayppp.onrender.com/';
+const ML_CHATBOT_URL = 'https://rayppp-production.up.railway.app/';
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
 
